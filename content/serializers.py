@@ -1,5 +1,9 @@
+# creating serializers for content app and models
 from rest_framework import serializers
 from content.models import ContentModel, UserContentModel
+
+''' creating serializer class for ContentModel with named 
+ContentSerializers with below criteria '''
 
 
 class ContentSerializers(serializers.ModelSerializer):
@@ -18,6 +22,10 @@ class ContentSerializers(serializers.ModelSerializer):
             'version',
             'buildtarget'
         ]
+
+
+''' creating serializer class for UserContentModel with named 
+UserContentSerializers with below criteria '''
 
 
 class UserContentSerializers(serializers.ModelSerializer):

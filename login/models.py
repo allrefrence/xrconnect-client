@@ -1,4 +1,4 @@
-# import your packages for writing and creating your database models
+# import your packages for writing and creating your database models for login app
 import datetime
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models

@@ -1,4 +1,4 @@
-# declare  your url's here..
+
 """xrconnect/login URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# declare  your URL's here..
 
 from login import views
 from django.urls import path

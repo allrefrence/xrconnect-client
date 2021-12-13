@@ -1,4 +1,4 @@
-# import all packages and references which are needed for business logic development  in views
+# import all packages and references which are needed for business logic development  in login views
 import io
 import json
 from datetime import timedelta
