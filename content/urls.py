@@ -1,4 +1,4 @@
-"""xrconnect URL Configuration
+"""xrconnect/content URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.2/topics/http/urls/
@@ -29,5 +29,6 @@ urlpatterns = [
     path('get_usercontent_buildtarget/', views.GetUserBuildtargetContent.as_view(), name='get_usercontent_buildtarget'),
     path('get_one_usercontent/', views.GetOneUserContent.as_view(), name='get_one_usercontent'),
     path('get_environment_data/', views.GetEnvironmentData.as_view(), name='get_environment_data'),
-    path('get_application_data/', views.GetApplicationData.as_view(), name='get_application_data')
+    path('get_application_data/', views.GetApplicationData.as_view(), name='get_application_data'),
+
 ]

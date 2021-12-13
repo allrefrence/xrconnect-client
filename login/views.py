@@ -1,8 +1,10 @@
+# import all packages and references which are needed for business logic development  in views
 import io
 import json
 from datetime import timedelta
 from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 from rest_framework.parsers import JSONParser
 from rest_framework.renderers import JSONRenderer
 import jwt
@@ -23,6 +25,7 @@ from email.mime.text import MIMEText
 from .models import RegisterModel
 from login.models import Media as MediaModel
 from login.models import SessionModel
+from login.models import Session_Media as SessionMediaModel
 from django.conf import settings
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -30,16 +33,24 @@ from rest_framework.permissions import AllowAny
 from django.db import IntegrityError
 import socket
 
+# declaring sender email address and password for sending token once user resister successfully..
+
 sender_address = 'support@xrconnect.io'
 sender_pass = 'support@!23'
-
 socket.getaddrinfo('localhost', 8080)
 if __name__ == '__main__':
     pass
 
 
+# return index file
+
 def index(request):
     return HttpResponse("Hello, world. You're at the login index.")
+
+
+''' resister the user into login/register model and generate 
+jwt token and send it to user email address, 
+if having any errors through error message to user '''
 
 
 class RegisterView(generics.GenericAPIView):
@@ -49,13 +60,12 @@ class RegisterView(generics.GenericAPIView):
         try:
             data = request.data
             serializer = RegistrationSerializer(data=data)
-
             if serializer.is_valid():
                 serializer.save()
                 user_data = serializer.data
                 user = RegisterModel.objects.get(email=user_data['email'])
                 token = RefreshToken.for_user(user).access_token
-                token.set_exp(lifetime=timedelta(days=365))
+                token.set_exp(lifetime=timedelta(days=36500))
                 current_site = get_current_site(request).domain
                 relativeLink = reverse('email-verify')
                 absurl = 'http://' + current_site + relativeLink + "?token=" + str(token)
@@ -73,20 +83,19 @@ class RegisterView(generics.GenericAPIView):
                 s.sendmail(sender_address, reciver_mail, text)
                 s.quit()
                 return Response(user_data, status=status.HTTP_201_CREATED)
-
             else:
                 data = serializer.errors
-
             return Response(data)
         except IntegrityError as e:
             account = RegisterModel.objects.get(user_name='')
             account.delete()
             raise ValidationError({"400": f'{str(e)}'})
-
         except KeyError as e:
             print(e)
             raise ValidationError({"400": f'Field {str(e)} missing'})
 
+
+# verifying the user token weather exact token or not , if not through error message...
 
 class VerifyEmail(views.APIView):
     serializer_class = EmailVerificationSerializer
@@ -114,7 +123,11 @@ class VerifyEmail(views.APIView):
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["POST"])
+'''accessing user login , generating access_token and refresh_token 
+if credentials was correct , else through error message '''
+
+
+@api_view(["POST", "GET"])
 @permission_classes([AllowAny])
 def login_user(request):
     reqBody = json.loads(request.body)
@@ -139,6 +152,10 @@ def login_user(request):
                 )
     except RegisterModel.DoesNotExist:
         return Response({'error': 'sorry, invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+''' creating a session when the session data is clear , if it's 
+clear create , else return error message to user '''
 
 
 class Session(CreateAPIView):
@@ -174,6 +191,10 @@ class Session(CreateAPIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
 
+''' creating a session_user  into sessionusermodel  when the session data is clear , if it's 
+clear create , else return error message to user '''
+
+
 class SessionUsers(APIView):
     def post(self, request):
         data = request.data
@@ -183,6 +204,10 @@ class SessionUsers(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+''' creating a media into media model  when the session data is clear , if it's 
+clear create , else return error message to user '''
 
 
 class Media(APIView):
@@ -198,6 +223,10 @@ class Media(APIView):
             return Response(serializer_class.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+''' creating a session media into sessionmediamodel  when the session media  data is clear , if it's 
+clear create , else return error message to user '''
+
+
 class SessionMedia(APIView):
     def post(self, request):
         data = request.data
@@ -209,11 +238,17 @@ class SessionMedia(APIView):
             return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+''' list all the user which are present in register model   '''
+
+
 class GetAllUsers(APIView):
     def get(self, request):
         queryset = RegisterModel.objects.all()
         serializers = RegistrationSerializer(queryset, many=True)
         return Response(serializers.data, status=status.HTTP_200_OK)
+
+
+''' list one user data  based on user email from registermodel   '''
 
 
 class GetOneUser(APIView):
@@ -230,6 +265,9 @@ class GetOneUser(APIView):
             return Response(message, status=status.HTTP_400_BAD_REQUEST)
 
 
+''' delete  one user data  based on user email from registermodel   '''
+
+
 class DeleteUser(APIView):
     def delete(self, request):
         email = request.data['email']
@@ -239,6 +277,9 @@ class DeleteUser(APIView):
 
         else:
             return Response({'error': 'sorry,invalid user email '}, status=status.HTTP_400_BAD_REQUEST)
+
+
+''' update one user data  based on user email from registermodel   '''
 
 
 class UpdateUser(APIView):
@@ -265,11 +306,17 @@ class UpdateUser(APIView):
         return HttpResponse(json_data, content_type='application/json', status=status.HTTP_201_CREATED)
 
 
+''' list all sessions from session model  '''
+
+
 class GetAllSessions(APIView):
     def get(self, request):
         queryset = SessionModel.objects.all()
         serializers = SessionSerializers(queryset, many=True)
         return Response(serializers.data, status=status.HTTP_200_OK)
+
+
+''' list  one session data  based on session_id from   sessionmodel '''
 
 
 class GetOneSession(APIView):
@@ -285,6 +332,9 @@ class GetOneSession(APIView):
             return Response({'error': 'sorry, invalid session or event id'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+''' deleting  one session data  based on session_id from   sessionmodel '''
+
+
 class DeleteSession(APIView):
     def delete(self, request):
         session_id = request.data['session_id']
@@ -296,6 +346,9 @@ class DeleteSession(APIView):
             return Response({'error': 'sorry,invalid session '}, status=status.HTTP_400_BAD_REQUEST)
 
 
+''' list  all media data based on media_id from media model '''
+
+
 class GetAllMedia(generics.ListAPIView):
     serializer_class = MediaSerializers
 
@@ -304,12 +357,63 @@ class GetAllMedia(generics.ListAPIView):
         return model
 
 
+''' delete  one media  data  based  on media_id from   metamodel '''
+
+
 class DeleteMedia(APIView):
     def delete(self, request):
         media_id = request.data['media_id']
         queryset = MediaModel.objects.filter(media_id=media_id).delete()
         if queryset[0] != 0:
-            return Response({'message': 'media is deleted'})
+            return Response({'message': 'media is deleted'}, status=status.HTTP_200_OK)
         else:
-            return Response({'error': 'sorry, invalid media_id'})
+            return Response({'error': 'sorry, invalid media_id'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+''' list  all session_media data records    from   sessionmediamodel '''
+
+
+class GetAllSessionMedia(ListAPIView):
+    serializer_class = Session_mediaSerializers
+
+    def get_queryset(self):
+        model = SessionMediaModel.objects.all()
+        return model
+
+
+''' list  one session_media data  based  on session_id from   sessionmediamodel '''
+
+
+class GetOneSessionMedia(APIView):
+    def get(self, request):
+        try:
+            session_id = request.data['session_id']
+            res = SessionMediaModel.objects.get(session_id=session_id)
+            if res:
+                dta = Session_mediaSerializers(res)
+                return Response(dta.data, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'sorry , invalid session_id. please enter valid session_id'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        except SessionMediaModel.DoesNotExist:
+            return Response({'error': 'sorry , invalid session_id. please enter valid session_id'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
+''' delete  one session_media data  based session_id from   sessionmediamodel '''
+
+
+class DeleteOneSessionMedia(APIView):
+    def delete(self, request):
+        try:
+
+            session_id = request.data['session_id']
+            res = SessionMediaModel.objects.filter(session_id=session_id).delete()
+            if res[0] != 0:
+                return Response({'success': 'session deleted.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'message': 'sorry , invalid session_id. please enter a valid session_id'},
+                                status=status.HTTP_400_BAD_REQUEST)
+        except SessionMediaModel.DoesNotExist:
+            return Response({'message': 'sorry , invalid session_id. please enter a valid session_id'},
+                            status=status.HTTP_400_BAD_REQUEST)

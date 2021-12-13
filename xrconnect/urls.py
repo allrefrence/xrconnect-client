@@ -17,7 +17,10 @@ Including another URLconf
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-
+from django.contrib import admin
+from django.urls import path, include
+# from .views import auth
+from rest_framework import routers
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -31,10 +34,7 @@ schema_view = get_schema_view(
     public=True,
     permission_classes=(permissions.AllowAny,),
 )
-from django.contrib import admin
-from django.urls import path, include
-# from .views import auth
-from rest_framework import routers
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -47,3 +47,4 @@ urlpatterns = [
 
 
 ]
+

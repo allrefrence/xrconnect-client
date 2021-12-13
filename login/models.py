@@ -1,8 +1,10 @@
+# import your packages for writing and creating your database models
 import datetime
-
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 from rest_framework_simplejwt.tokens import RefreshToken
+
+''' Base-user model manager for Register model with named MyAccountManager '''
 
 
 class MyAccountManager(BaseUserManager):
@@ -32,6 +34,9 @@ class MyAccountManager(BaseUserManager):
         user.is_staff = True
         user.is_superuser = True
         user.save(using=self._db)
+
+
+''' creating AbstractBaseUsermod for register the user with RegisterModel with below fields  '''
 
 
 class RegisterModel(AbstractBaseUser):
@@ -73,6 +78,9 @@ class RegisterModel(AbstractBaseUser):
     def has_module_perms(self, app_label): return self.is_active
 
 
+''' creating model for adding sessions  with named  SessionModel with below fields  '''
+
+
 class SessionModel(models.Model):
     date_created = models.CharField(max_length=50)
     date_modified = models.CharField(max_length=50, default=datetime.date.today())
@@ -95,6 +103,9 @@ class SessionModel(models.Model):
         return self.event_name
 
 
+''' creating model for adding sessions  with named  Session_Users with below fields  '''
+
+
 class Session_Users(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now_add=True)
@@ -106,6 +117,9 @@ class Session_Users(models.Model):
 
     def __str__(self):
         return self.session_id
+
+
+''' creating model for adding sessions  with named  Media with below fields  '''
 
 
 class Media(models.Model):
@@ -128,15 +142,16 @@ class Media(models.Model):
         return self.media_id
 
 
+''' creating model for adding sessions  with named  Session_Media with below fields   '''
+
+
 class Session_Media(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(auto_now_add=True)
-    session_id = models.CharField(max_length=128)
+    session_id = models.CharField(max_length=128, unique=True)
     media_id = models.CharField(max_length=128)
     media_type = models.CharField(max_length=128)
     media_path = models.CharField(max_length=1028)
 
     def __str__(self):
         return self.media_path
-
-
