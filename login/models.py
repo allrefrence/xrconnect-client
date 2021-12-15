@@ -4,39 +4,37 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.db import models
 from rest_framework_simplejwt.tokens import RefreshToken
 
-''' Base-user model manager for Register model with named MyAccountManager '''
+''' Base-users model manager for Register model with named MyAccountManager '''
 
 
 class MyAccountManager(BaseUserManager):
-    def create_user(self, email, user_name, password=None
-                    ):
-        if not email:
-            raise ValueError('Users must have an email address')
-        if not user_name:
-            raise ValueError('user must have user_name')
+    def create_user(self, user_name, email, gender, role, image_path, password=None):
+        if user_name is None:
+            raise TypeError('Users should have a username')
+        if email is None:
+            raise TypeError('Users should have a Email')
 
-        user = self.model(
-            email=self.normalize_email(email),
-
-        )
-
+        user = self.model(user_name=user_name, gender=gender, role=role, image_path=image_path,
+                          email=self.normalize_email(email))
         user.set_password(password)
-        user.save(using=self._db)
+        user.save()
         return user
 
-    def create_superuser(self, email, password):
-        user = self.create_user(
-            email=self.normalize_email(email),
-            password=password,
-        )
-        user.is_admin = True
-        user.is_active = True
-        user.is_staff = True
+    def create_superuser(self, user_name, email, password=None):
+        if password is None:
+            raise TypeError('Password should not be none')
+
+        user = self.create_user(user_name, email, password)
         user.is_superuser = True
-        user.save(using=self._db)
+        user.is_staff = True
+        user.save()
+        return user
 
 
-''' creating AbstractBaseUsermod for register the user with RegisterModel with below fields  '''
+AUTH_PROVIDERS = {'facebook': 'facebook', 'google': 'google',
+                  'twitter': 'twitter', 'email': 'email'}
+
+''' creating AbstractBaseUsermod for register the users with RegisterModel with below fields  '''
 
 
 class RegisterModel(AbstractBaseUser):
@@ -56,6 +54,9 @@ class RegisterModel(AbstractBaseUser):
     # is_social_user = models.BooleanField(default=False)
     provider = models.CharField(max_length=128, default='xrconnect-client')
     image_path = models.CharField(max_length=128, null=True)
+    auth_provider = models.CharField(
+        max_length=255, blank=False,
+        null=False, default=AUTH_PROVIDERS.get('email'))
     USERNAME_FIELD = 'email'
 
     objects = MyAccountManager()

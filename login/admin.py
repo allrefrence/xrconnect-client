@@ -1,8 +1,11 @@
 from django.contrib import admin
-from login.models import RegisterModel, SessionModel, Session_Users, Session_Media, Media
 
-admin.site.register(RegisterModel)
-admin.site.register(Session_Media)
-admin.site.register(SessionModel)
-admin.site.register(Session_Users)
-admin.site.register(Media)
+# Register your models here.
+from .models import RegisterModel
+
+
+class UserAdmin(admin.ModelAdmin):
+    list_display = ['user_name', 'email', ]
+
+
+admin.site.register(RegisterModel, UserAdmin)

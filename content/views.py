@@ -7,7 +7,7 @@ from content.serializers import ContentSerializers, UserContentSerializers
 
 # create your views from here
 ''' creating a content record  into Contentmodel   when the content  data is clear , if it's 
-clear create , else return error message to user '''
+clear create , else return error message to users '''
 
 
 class Content(APIView):
@@ -74,7 +74,7 @@ class Get_One_Content(APIView):
 
 
 ''' creating a UserContent record  into UserContent   when the content  data is clear , if it's 
-clear create , else return error message to user '''
+clear create , else return error message to users '''
 
 
 class UserContent(APIView):
@@ -84,7 +84,7 @@ class UserContent(APIView):
 
         if serializers_class.is_valid():
             serializers_class.save()
-            return Response({'message': 'content for user is saved', 'response': serializers_class.data},
+            return Response({'message': 'content for users is saved', 'response': serializers_class.data},
                             status=status.HTTP_201_CREATED)
         else:
             return Response({'errors': serializers_class.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -113,7 +113,7 @@ class GetUserBuildtargetContent(APIView):
                 serializers = UserContentSerializers(data, many=True)
                 return Response(serializers.data, status=status.HTTP_200_OK)
             else:
-                error = {'error': 'sorry, no user content data with this build_target and content_id  request '}
+                error = {'error': 'sorry, no users content data with this build_target and content_id  request '}
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
         except KeyError:
             return Response({'error': 'sorry, content_id and build_target both is required'},
@@ -131,7 +131,7 @@ class GetOneUserContent(APIView):
             data = UserContentSerializers(resp, many=True)
             return Response(data.data, status=status.HTTP_200_OK)
         else:
-            return Response({'error': 'sorry, no user content with this content_id'},
+            return Response({'error': 'sorry, no users content with this content_id'},
                             status=status.HTTP_400_BAD_REQUEST)
 
 

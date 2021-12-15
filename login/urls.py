@@ -1,4 +1,3 @@
-
 """xrconnect/login URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
@@ -16,19 +15,19 @@ Including another URLconf
 """
 # declare  your URL's here..
 
-from login import views
-from django.urls import path
-from .views import VerifyEmail, RegisterView, Session, SessionUsers, Media, SessionMedia, GetAllUsers, GetAllSessions, \
-    GetAllMedia, GetAllSessionMedia
-from django.views.decorators.csrf import csrf_exempt
 # from  rest_framework.routers import  DefaultRouter
 # router=DefaultRouter()
 # router.register('Session_Users',Session_Users,basename=Session_Users)
 
+from login import views
+from django.urls import path
+from .views import VerifyEmail, RegisterView, Session, SessionUsers, Media, SessionMedia, GetAllUsers, GetAllSessions, \
+    GetAllMedia, GetAllSessionMedia, PasswordTokenCheckAPi, RequestPasswordResetEmail, SetNewpASSWORDApiview
+from django.views.decorators.csrf import csrf_exempt
 
 urlpatterns = [
     # path('', views.index, name='index'),
-    path('login/', views.login_user, name='login'),
+    path('login/', views.LoginAPIView.as_view(), name='login'),
     path('signup/', RegisterView.as_view(), name='signup'),
     path('email-verify/', VerifyEmail.as_view(), name="email-verify"),
     path('session/', Session.as_view(), name='session'),
@@ -47,6 +46,9 @@ urlpatterns = [
     path('delete_media/', views.DeleteMedia.as_view(), name='delete_media'),
     path('get_one_session_media/', views.GetOneSessionMedia.as_view(), name='get_one_session_media'),
     path('delete_one_session_media/', views.DeleteOneSessionMedia.as_view(), name='delete_one_session_media'),
-    path('all_session_media/', GetAllSessionMedia.as_view(), name='all_session_media')
+    path('all_session_media/', GetAllSessionMedia.as_view(), name='all_session_media'),
+    path('request-reset-email/', RequestPasswordResetEmail.as_view(), name='request-reset-email'),
+    path('reset-password/<uidb64>/<token>/', PasswordTokenCheckAPi.as_view(), name='password-reset-confirm'),
+    path('password-reset-confirm/', SetNewpASSWORDApiview.as_view(), name='password-reset-confirm')
 
 ]

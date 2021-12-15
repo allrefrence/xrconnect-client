@@ -40,15 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'login',
+
     'content',
     'rest_framework',
     'corsheaders',
     'drf_yasg',
+
     "rest_framework.authtoken",
 
 ]
 
-#AUTH_USER_MODEL = 'login.UserModel'
+AUTH_USER_MODEL = 'login.RegisterModel'
 
 MIDDLEWARE = [
 
@@ -66,7 +68,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'xrconnect.urls'
 
-JWT_SECRET_KEY=os.environ.get('JWT_SECRET_KEY')
+JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
 
 TEMPLATES = [
     {
@@ -156,8 +158,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # )
 
 
-
-EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587

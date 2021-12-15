@@ -24,7 +24,7 @@ class ContentModel(models.Model):
         return self.content_name
 
 
-''' creating model for adding   user content  with named  UserContentModel with below fields  '''
+''' creating model for adding   users content  with named  UserContentModel with below fields  '''
 
 
 class UserContentModel(models.Model):
