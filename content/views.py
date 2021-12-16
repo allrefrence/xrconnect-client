@@ -16,11 +16,14 @@ class Content(APIView):
         serilaizers_class = ContentSerializers(data=data)
         if serilaizers_class.is_valid():
             serilaizers_class.save()
-            return Response({'success': 'content saved', 'message': serilaizers_class.data},
+            return Response({"data": '', 'message': 'content saved successfully',
+                             'status': 'success', 'code': status.HTTP_201_CREATED},
                             status=status.HTTP_201_CREATED)
         else:
-            errors = {'error': serilaizers_class.errors}
-            return Response(errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({
+                'status': 'failed', 'message': serilaizers_class.errors, 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' list all the Get_All_Content which are present in ContentModel model   '''
@@ -28,9 +31,10 @@ class Content(APIView):
 
 class Get_All_Content(APIView):
     def get(self, request):
-        data = ContentModel.objects.all()
-        serializers_class = ContentSerializers(data, many=True)
-        return Response(serializers_class.data, status=status.HTTP_200_OK)
+        queryset = ContentModel.objects.all()
+        serializers = ContentSerializers(queryset, many=True)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializers.data},
+                        status=status.HTTP_200_OK)
 
 
 ''' list   one buildtarget data  based on buildtarget and content_id from ContentModel   '''
@@ -45,12 +49,15 @@ class Get_Buildtarget_Content(APIView):
             res = ContentModel.objects.filter(buildtarget=data, content_id=content)
             if res:
                 serializers = ContentSerializers(res, many=True)
-                return Response(serializers.data, status=status.HTTP_200_OK)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': serializers.data},
+                                status=status.HTTP_200_OK)
             else:
-                error = {'error': 'sorry, no content data with this build-target and content_id request '}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+                error = {'error': 'invalid build-target or content_id'}
+            return Response({'message': error, 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
         except KeyError:
-            return Response({'error': 'sorry, content_id and build_target both is required'},
+            return Response({'status': 'failed', 'message': 'content id and build_target both fields are required',
+                             'code': status.HTTP_400_BAD_REQUEST},
                             status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -66,11 +73,16 @@ class Get_One_Content(APIView):
             res = ContentModel.objects.get(content_id=content)
             if res:
                 response = ContentSerializers(res)
-                return Response(response.data, status=status.HTTP_200_OK)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': response.data},
+                                status=status.HTTP_200_OK)
 
         except ContentModel.DoesNotExist:
-            return Response({'error': 'sorry no content is available with this content_id'},
+            return Response({'message': 'invalid content_id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
                             status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'content id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' creating a UserContent record  into UserContent   when the content  data is clear , if it's 
@@ -84,10 +96,13 @@ class UserContent(APIView):
 
         if serializers_class.is_valid():
             serializers_class.save()
-            return Response({'message': 'content for users is saved', 'response': serializers_class.data},
+            return Response({'status': 'success', 'message': 'user-content saved successfully',
+                             'code': status.HTTP_201_CREATED},
                             status=status.HTTP_201_CREATED)
         else:
-            return Response({'errors': serializers_class.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'status': 'failed', 'message': serializers_class.errors, 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' list all the GetAllUserContents which are present in UserContentModel model   '''
@@ -95,9 +110,10 @@ class UserContent(APIView):
 
 class GetAllUserContents(APIView):
     def get(self, request):
-        data = UserContentModel.objects.all()
-        responce = UserContentSerializers(data, many=True)
-        return Response(responce.data, status=status.HTTP_200_OK)
+        queryset = UserContentModel.objects.all()
+        serializers = UserContentSerializers(queryset, many=True)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': serializers.data},
+                        status=status.HTTP_200_OK)
 
 
 ''' list   one build_target data  based on build_target and content_id from UserContentModel   '''
@@ -111,12 +127,15 @@ class GetUserBuildtargetContent(APIView):
             data = UserContentModel.objects.filter(content_id=content, build_target=buildtarget)
             if data:
                 serializers = UserContentSerializers(data, many=True)
-                return Response(serializers.data, status=status.HTTP_200_OK)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': serializers.data},
+                                status=status.HTTP_200_OK)
             else:
-                error = {'error': 'sorry, no users content data with this build_target and content_id  request '}
-            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+                error = {'error': 'invalid build-target or content_id  '}
+            return Response({'message': error, 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
         except KeyError:
-            return Response({'error': 'sorry, content_id and build_target both is required'},
+            return Response({'status': 'failed', 'message': 'content id and build_target both fields are required',
+                             'code': status.HTTP_400_BAD_REQUEST},
                             status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -125,14 +144,21 @@ class GetUserBuildtargetContent(APIView):
 
 class GetOneUserContent(APIView):
     def get(self, request):
-        contid = request.data['content_id']
-        resp = UserContentModel.objects.filter(content_id=contid)
-        if resp:
-            data = UserContentSerializers(resp, many=True)
-            return Response(data.data, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'sorry, no users content with this content_id'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            contid = request.data['content_id']
+            resp = UserContentModel.objects.filter(content_id=contid)
+            if resp:
+                data = UserContentSerializers(resp, many=True)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': data.data},
+                                status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {'status': 'failed', 'message': 'invalid content id', 'code': status.HTTP_400_BAD_REQUEST},
+                    status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'content id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' list   EnvironmentData record    ContentModel '''
@@ -142,7 +168,8 @@ class GetEnvironmentData(APIView):
     def get(self, request):
         data = ContentModel.objects.filter(content_type=2)
         response = ContentSerializers(data, many=True)
-        return Response(response.data, status=status.HTTP_200_OK)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': response.data},
+                        status=status.HTTP_200_OK)
 
 
 ''' list   ApplicationData record    ContentModel '''
@@ -152,4 +179,5 @@ class GetApplicationData(APIView):
     def get(self, request):
         resp = ContentModel.objects.filter(content_type=1)
         response = ContentSerializers(resp, many=True)
-        return Response(response.data, status=status.HTTP_200_OK)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'content': response.data},
+                        status=status.HTTP_200_OK)

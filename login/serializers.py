@@ -39,14 +39,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         extra_kwargs = {"password_hash": {"write_only": True}}
 
-    def validate(self, attrs):
-        email = attrs.get('email', '')
-        user_name = attrs.get('user_name', '')
+    # def validate(self, attrs):
+    #     email = attrs.get('email', '')
+    #     user_name = attrs.get('user_name', '')
 
-        if not user_name.isalnum():
-            raise serializers.ValidationError(
-                self.default_error_messages)
-        return attrs
+        # if not user_name.isalnum():
+        #     raise serializers.ValidationError(
+        #         self.default_error_messages)
+        # return attrs
 
     def create(self, validated_data):
         return RegisterModel.objects.create_user(**validated_data)
@@ -160,7 +160,7 @@ class SessionSerializers(serializers.ModelSerializer):
     class Meta:
         model = SessionModel
         fields = ['id', 'session_id', 'date_created', 'event_name', 'event_type', 'parent_event_name', 'access_type',
-                  'max_users', 'host_user_email', 'description', 'environment_id', 'category', 'content']
+                  'max_users', 'created_by', 'description', 'environment_id', 'category', 'content']
 
 
 ''' creating serializer class for Session_Users with named 

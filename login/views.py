@@ -87,10 +87,15 @@ class RegisterView(generics.GenericAPIView):
                 text = message.as_string()
                 s.sendmail(sender_address, reciver_mail, text)
                 s.quit()
-                return Response(user_data, status=status.HTTP_201_CREATED)
+                return Response({
+                    'data': '', 'message': 'signup successful,please verify your account',
+                    'code': status.HTTP_201_CREATED
+                }, status=status.HTTP_201_CREATED)
             else:
                 data = serializer.errors
-            return Response(data)
+            return Response({
+                'status': 'failed', 'message': serializer.errors, 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
             account = RegisterModel.objects.get(user_name='')
             account.delete()
@@ -121,11 +126,14 @@ class VerifyEmail(views.APIView):
                 user.is_active = True
                 user.save()
 
-            return Response({'email': 'successfully activated'}, status=status.HTTP_200_OK)
+            return Response({'message': 'email verified successfully', 'code': status.HTTP_200_OK},
+                            status=status.HTTP_200_OK)
         except jwt.ExpiredSignatureError as identifier:
-            return Response({'error': 'Activation Expired'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Activation Expired', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
         except jwt.exceptions.DecodeError as identifier:
-            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'invalid token', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 '''accessing users login , generating access_token and refresh_token 
@@ -170,14 +178,27 @@ class LoginAPIView(generics.GenericAPIView):
     serializer_class = LoginSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = request.data['email']
-        user_data = RegisterModel.objects.get(email=user)
-        if user_data.is_active:
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'sorry either invalid credentials or  Account is not verified, contact admin'})
+        try:
+            res_serializer = LoginSerializer(data=request.data)
+            if res_serializer.is_valid():
+                serializer = self.serializer_class(data=request.data)
+                serializer.is_valid(raise_exception=True)
+                user = request.data['email']
+                user_data = RegisterModel.objects.get(email=user)
+                if user_data.is_active:
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response(
+                        {'message': 'sorry either invalid credentials or  Account is not verified, contact admin',
+                         'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST})
+            else:
+                return Response({
+                    'status': 'failed', 'message': res_serializer.errors, 'code': status.HTTP_400_BAD_REQUEST},
+                    status=status.HTTP_400_BAD_REQUEST)
+
+        except RegisterModel.DoesNotExist:
+            return Response({'message': 'invalid email', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class RequestPasswordResetEmail(generics.GenericAPIView):
@@ -208,7 +229,9 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
             s.sendmail(sender_address, reciver_mail, text)
             s.quit()
 
-        return Response({'success': 'we have sent you a link to rest your password'}, status=status.HTTP_200_OK)
+        return Response({'status': 'success', 'message': 'we have sent you a link to rest your password',
+                         'code': status.HTTP_200_OK},
+                        status=status.HTTP_200_OK)
 
 
 class PasswordTokenCheckAPi(generics.GenericAPIView):
@@ -219,17 +242,18 @@ class PasswordTokenCheckAPi(generics.GenericAPIView):
             id = smart_str(urlsafe_base64_decode(uidb64))
             user = RegisterModel.objects.get(id=id)
             if not PasswordResetTokenGenerator().check_token(user, token):
-                return Response({'error': 'token is not valid , please request a new one'},
+                return Response({'status': 'failed', 'message': 'invalid token', 'code': status.HTTP_401_UNAUTHORIZED},
                                 status=status.HTTP_401_UNAUTHORIZED)
 
-            return Response({'success': True, 'message': 'credntials valid', 'uidb64': uidb64, 'token': token},
-                            status=status.HTTP_401_UNAUTHORIZED)
-
-
+            return Response(
+                {'success': 'success', 'message': 'credentials valid', 'code': 'status.HTTP_200_OK', 'uidb64': uidb64,
+                 'token': token},
+                status=status.HTTP_200_OK)
 
         except DjangoUnicodeDecodeError as identifier:
             if not PasswordResetTokenGenerator().check_token(user):
-                return Response({'error': 'token is not valid , please request a new one'},
+                return Response({'success': 'success', 'message': 'invalid token',
+                                 'code': status.HTTP_401_UNAUTHORIZED},
                                 status=status.HTTP_401_UNAUTHORIZED)
 
 
@@ -239,7 +263,8 @@ class SetNewpASSWORDApiview(generics.GenericAPIView):
     def patch(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response({'success': True, 'message': 'Password reset success'}, status=status.HTTP_200_OK)
+        return Response({'success': 'success', 'message': 'Password reset success', 'code': status.HTTP_200_OK},
+                        status=status.HTTP_200_OK)
 
 
 ''' creating a session when the session data is clear , if it's 
@@ -252,31 +277,44 @@ class Session(CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         try:
-            inputF = request.data['event_name']
-            day = request.data['date_created']
-            all_event = str(day) + inputF
-            data = SessionModel.objects.create(event_name=all_event, date_created=day,
-                                               session_id=request.data['session_id'],
-                                               event_type=request.data['event_type'],
-                                               parent_event_name=request.data['parent_event_name'],
-                                               access_type=request.data['access_type'],
-                                               max_users=request.data['max_users'],
-                                               host_user_email=request.data['host_user_email'],
-                                               description=request.data['description'],
-                                               environment_id=request.data['environment_id'],
-                                               category=request.data['category'],
-                                               content=request.data['content'])
+            res = request.data
+            session_data_serializer = SessionSerializers(data=res)
+            if session_data_serializer.is_valid():
+                inputF = request.data['event_name']
+                day = request.data['date_created']
 
-            return Response({'message': 'success, session saved '}, status=status.HTTP_201_CREATED)
+                all_event = str(day) + inputF
+
+                SessionModel.objects.create(event_name=all_event, date_created=day,
+                                            session_id=request.data['session_id'],
+                                            event_type=request.data['event_type'],
+                                            parent_event_name=request.data['parent_event_name'],
+                                            access_type=request.data['access_type'],
+                                            max_users=request.data['max_users'],
+                                            created_by=request.data['created_by'],
+                                            description=request.data['description'],
+                                            environment_id=request.data['environment_id'],
+                                            category=request.data['category'],
+                                            content=request.data['content'])
+
+                return Response({'message': 'session saved successfully',
+                                 'status': 'success', 'code': status.HTTP_201_CREATED}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'message': session_data_serializer.errors,
+                                 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                                status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError:
-            e = 'session or event already exist'
-            return Response({'error': e}, status=status.HTTP_400_BAD_REQUEST)
-        except KeyError:
-            return Response({'error': '*required fields i)session_id , ii)date_created , iii)event_name , '
-                                      'iv)event_type , v)parent_event_name , vi)session_status , vii)access_type , '
-                                      'viii)max_users , ix)host_user_email , x)description , xi)environment_id , '
-                                      'xii)category,xiii)content '},
+            e = 'session or event already exist with this session_id  and date '
+            return Response({'message': e, 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
                             status=status.HTTP_400_BAD_REQUEST)
+
+    #        except IntegrityError:
+    #        e = 'session or event already exist'
+    #        return Response({'error': e, }, status=status.HTTP_400_BAD_REQUEST)
+    #
+    # except KeyError as e:
+    # return Response({'message': e.args})
+    #
 
 
 ''' creating a session_user  into sessionusermodel  when the session data is clear , if it's 
@@ -289,9 +327,12 @@ class SessionUsers(APIView):
         serializer = SessionUserSerializers(data=data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response({'message': 'sessionuser saved successfully',
+                             'status': 'success', 'code': status.HTTP_201_CREATED}, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'message': serializer.errors, 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' creating a media into media model  when the session data is clear , if it's 
@@ -306,9 +347,12 @@ class Media(APIView):
         serializer_class = MediaSerializers(data=data)
         if serializer_class.is_valid():
             serializer_class.save()
-            return Response(serializer_class.data, status=status.HTTP_201_CREATED)
+            return Response({'message': 'media saved successfully',
+                             'status': 'success', 'code': status.HTTP_201_CREATED}, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializer_class.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'message': serializer_class.errors, 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' creating a session media into sessionmediamodel  when the session media  data is clear , if it's 
@@ -321,9 +365,12 @@ class SessionMedia(APIView):
         serializers = Session_mediaSerializers(data=data)
         if serializers.is_valid():
             serializers.save()
-            return Response(serializers.data, status=status.HTTP_201_CREATED)
+            return Response({'message': 'sessionmedia saved successfully',
+                             'status': 'success', 'code': status.HTTP_201_CREATED}, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializers.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                'message': serializers.errors, 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' list all the users which are present in register model   '''
@@ -333,10 +380,11 @@ class GetAllUsers(APIView):
     def get(self, request):
         queryset = RegisterModel.objects.all()
         serializers = RegistrationSerializer(queryset, many=True)
-        return Response(serializers.data, status=status.HTTP_200_OK)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializers.data},
+                        status=status.HTTP_200_OK)
 
 
-''' list one users data  based on users email from registermodel   '''
+''' list one users data  based on users email from registered-model   '''
 
 
 class GetOneUser(APIView):
@@ -346,14 +394,20 @@ class GetOneUser(APIView):
             querset = RegisterModel.objects.get(email=email)
             if querset:
                 serializers = RegistrationSerializer(querset)
-                return Response(serializers.data, status=status.HTTP_200_OK)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializers.data},
+                                status=status.HTTP_200_OK)
 
         except RegisterModel.DoesNotExist:
-            message = {'error': 'sorry invalid input, please enter a valid email-address'}
-            return Response(message, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({'message': 'invalid email', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response({'message': 'email field is required', 'status': 'failed',
+                             'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
-''' delete  one users data  based on users email from registermodel   '''
+''' delete  one users data  based on users email from registered-model   '''
 
 
 class DeleteUser(APIView):
@@ -361,10 +415,12 @@ class DeleteUser(APIView):
         email = request.data['email']
         user = RegisterModel.objects.filter(email=email).delete()
         if user[0] != 0:
-            return Response({'message': 'users deleted'}, status=status.HTTP_200_OK)
+            return Response({'status': 'success', 'message': 'user deleted successfully', 'code': status.HTTP_200_OK},
+                            status=status.HTTP_200_OK)
 
         else:
-            return Response({'error': 'sorry,invalid users email '}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'invalid email', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' update one users data  based on users email from registermodel   '''
@@ -372,6 +428,7 @@ class DeleteUser(APIView):
 
 class UpdateUser(APIView):
     def put(self, request):
+        global json_data
         b_data = request.body
         streamed = io.BytesIO(b_data)
         d1 = JSONParser().parse(streamed)
@@ -382,15 +439,26 @@ class UpdateUser(APIView):
                 serializers = RegistrationSerializer(res, d1, partial=True)
                 if serializers.is_valid():
                     serializers.save()
-                    message = {'message': "users updated"}
-                    json_data = JSONRenderer().render(message)
-                else:
-                    json_data = JSONRenderer().render(serializers.errors)
+                    message = {'status': 'success', 'message': 'user updated successfully',
+                               'code': status.HTTP_201_CREATED}
+                    json_data = JSONRenderer().render(message
+                                                      )
+                    return HttpResponse(json_data, content_type='application/json', status=status.HTTP_201_CREATED)
+                # else:
+                #     message = {'status': 'failed', 'message': serializers.errors,
+                #                'code': status.HTTP_400_BAD_REQUEST}
+                #     json_data = JSONRenderer().render(message)
+                #     return HttpResponse(json_data, content_type='application/json', status=status.HTTP_400_BAD_REQUEST)
             except RegisterModel.DoesNotExist:
-                json_data = JSONRenderer().render({'error': 'invalid email'})
+                message = {'status': 'failed', 'message': 'invalid email',
+                           'code': status.HTTP_400_BAD_REQUEST}
+                json_data = JSONRenderer().render(message)
+                return HttpResponse(json_data, content_type='application/json', status=status.HTTP_201_CREATED)
 
         else:
-            json_data = JSONRenderer().render({'error': 'please provide email'})
+            message = {'status': 'failed', 'message': 'please provide email',
+                       'code': status.HTTP_400_BAD_REQUEST}
+            json_data = JSONRenderer().render(message)
         return HttpResponse(json_data, content_type='application/json', status=status.HTTP_201_CREATED)
 
 
@@ -401,7 +469,8 @@ class GetAllSessions(APIView):
     def get(self, request):
         queryset = SessionModel.objects.all()
         serializers = SessionSerializers(queryset, many=True)
-        return Response(serializers.data, status=status.HTTP_200_OK)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializers.data},
+                        status=status.HTTP_200_OK)
 
 
 ''' list  one session data  based on session_id from   sessionmodel '''
@@ -415,9 +484,15 @@ class GetOneSession(APIView):
             result = SessionModel.objects.get(session_id=session)
             if result:
                 serializer = SessionSerializers(result)
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializer.data},
+                                status=status.HTTP_200_OK)
         except SessionModel.DoesNotExist:
-            return Response({'error': 'sorry, invalid session or event id'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'invalid session id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'session id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' deleting  one session data  based on session_id from   sessionmodel '''
@@ -425,24 +500,33 @@ class GetOneSession(APIView):
 
 class DeleteSession(APIView):
     def delete(self, request):
-        session_id = request.data['session_id']
-        session = SessionModel.objects.filter(session_id=session_id).delete()
-        if session[0] != 0:
-            return Response({'message': 'session deleted'}, status=status.HTTP_200_OK)
+        try:
+            session_id = request.data['session_id']
+            session = SessionModel.objects.filter(session_id=session_id).delete()
+            if session[0] != 0:
+                return Response(
+                    {'status': 'success', 'message': 'user deleted successfully', 'code': status.HTTP_200_OK},
+                    status=status.HTTP_200_OK)
 
-        else:
-            return Response({'error': 'sorry,invalid session '}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(
+                    {'message': 'invalid session id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                    status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'session id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' list  all media data based on media_id from media model '''
 
 
-class GetAllMedia(generics.ListAPIView):
-    serializer_class = MediaSerializers
-
-    def get_queryset(self):
-        model = MediaModel.objects.all()
-        return model
+class GetAllMedia(APIView):
+    def get(self, request):
+        queryset = MediaModel.objects.all()
+        serializers = MediaSerializers(queryset, many=True)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializers.data},
+                        status=status.HTTP_200_OK)
 
 
 ''' delete  one media  data  based  on media_id from   metamodel '''
@@ -450,23 +534,33 @@ class GetAllMedia(generics.ListAPIView):
 
 class DeleteMedia(APIView):
     def delete(self, request):
-        media_id = request.data['media_id']
-        queryset = MediaModel.objects.filter(media_id=media_id).delete()
-        if queryset[0] != 0:
-            return Response({'message': 'media is deleted'}, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'sorry, invalid media_id'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            media_id = request.data['media_id']
+            queryset = MediaModel.objects.filter(media_id=media_id).delete()
+            if queryset[0] != 0:
+                return Response(
+                    {'status': 'success', 'message': 'media deleted successfully', 'code': status.HTTP_200_OK},
+                    status=status.HTTP_200_OK)
+
+            else:
+                return Response(
+                    {'message': 'invalid media id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                    status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'media id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' list  all session_media data records    from   sessionmediamodel '''
 
 
-class GetAllSessionMedia(ListAPIView):
-    serializer_class = Session_mediaSerializers
-
-    def get_queryset(self):
-        model = SessionMediaModel.objects.all()
-        return model
+class GetAllSessionMedia(APIView):
+    def get(self, request):
+        queryset = SessionMediaModel.objects.all()
+        serializers = Session_mediaSerializers(queryset, many=True)
+        return Response({'status': 'success', 'code': status.HTTP_200_OK, 'data': serializers.data},
+                        status=status.HTTP_200_OK)
 
 
 ''' list  one session_media data  based  on session_id from   sessionmediamodel '''
@@ -479,13 +573,19 @@ class GetOneSessionMedia(APIView):
             res = SessionMediaModel.objects.get(session_id=session_id)
             if res:
                 dta = Session_mediaSerializers(res)
-                return Response(dta.data, status=status.HTTP_200_OK)
+                return Response({'status': 'success', 'code': status.HTTP_200_OK, 'session': dta.data},
+                                status=status.HTTP_200_OK)
             else:
-                return Response({'error': 'sorry , invalid session_id. please enter valid session_id'},
-                                status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'message': 'invalid session id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                    status=status.HTTP_400_BAD_REQUEST)
         except SessionMediaModel.DoesNotExist:
-            return Response({'error': 'sorry , invalid session_id. please enter valid session_id'},
+            return Response({'message': 'invalid session id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
                             status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'session id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)
 
 
 ''' delete  one session_media data  based session_id from   sessionmediamodel '''
@@ -498,10 +598,14 @@ class DeleteOneSessionMedia(APIView):
             session_id = request.data['session_id']
             res = SessionMediaModel.objects.filter(session_id=session_id).delete()
             if res[0] != 0:
-                return Response({'success': 'session deleted.'}, status=status.HTTP_200_OK)
+                return Response(
+                    {'status': 'success', 'message': 'media deleted successfully', 'code': status.HTTP_200_OK},
+                    status=status.HTTP_200_OK)
             else:
-                return Response({'message': 'sorry , invalid session_id. please enter a valid session_id'},
-                                status=status.HTTP_400_BAD_REQUEST)
-        except SessionMediaModel.DoesNotExist:
-            return Response({'message': 'sorry , invalid session_id. please enter a valid session_id'},
-                            status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'message': 'invalid session id', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                    status=status.HTTP_400_BAD_REQUEST)
+        except KeyError:
+            return Response(
+                {'message': 'session id field is required', 'status': 'failed', 'code': status.HTTP_400_BAD_REQUEST},
+                status=status.HTTP_400_BAD_REQUEST)

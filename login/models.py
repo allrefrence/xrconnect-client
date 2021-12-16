@@ -92,7 +92,7 @@ class SessionModel(models.Model):
     session_status = models.BooleanField(default=True)
     access_type = models.CharField(max_length=128)
     max_users = models.CharField(max_length=10)
-    host_user_email = models.EmailField(null=True)
+    created_by = models.EmailField(null=True)
     start_date = models.CharField(max_length=50, default=datetime.date.today())
     end_date = models.CharField(max_length=50, default=datetime.date.today())
     description = models.CharField(max_length=1000)
